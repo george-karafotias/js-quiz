@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<body>
+<style>
+#content {
+	width:600px;
+	margin:0 auto;
+	padding:0px;
+	text-align:center;
+}
+.answer {
+	width:560px;
+	height:30px;
+	background-color:#d1dffa;
+	font-size:18px;
+}
+.answer:hover {
+	background-color:orange;
+	cursor:pointer;
+}
+#mainContent {
+	background:#154eb7;
+	text-align:left; 
+	padding:5px 20px 5px 20px;
+}
+#questionIndex {
+	font-size:20px; 
+	font-weight:bold; 
+	color:white;
+}
+#question {
+	font-size:22px; 
+	font-weight:bold; 
+	color:white; 
+	word-wrap:break-word;
+}
+.startBtn:hover
+{
+	opacity:0.8;
+	transition: opacity .2s ease-out;
+	-moz-transition: opacity .2s ease-out;
+	-webkit-transition: opacity .2s ease-out;
+	-o-transition: opacity .2s ease-out;
+}
+#score {
+	font-size:22px;
+	font-weight:bold;
+}
+</style>
+
+<script>
+var answeredQuestions;
+var questions;
+var currentQuestionIndex;
+
+function shuffle(a) {
+    var j, x, i;
+    for (i = a.length; i; i--) {
+        j = Math.floor(Math.random() * i);
+        x = a[i - 1];
+        a[i - 1] = a[j];
+        a[j] = x;
+    }
+}
+
+function questionAnswered(answerIndex) {
+	var isAnswerCorrect = (questions[currentQuestionIndex].correctAnswer == answerIndex);
+	answeredQuestions[currentQuestionIndex] = isAnswerCorrect;
+	
+	if (currentQuestionIndex == questions.length-1) {
+		var correctAnswersNumber = 0;
+		for (var i=0; i<answeredQuestions.length; i++)
+			if (answeredQuestions[i]) correctAnswersNumber++;
+			
+		document.getElementById("score").innerHTML = "Your score is " + correctAnswersNumber + "/" + questions.length;
+		document.getElementById("mainContent").style.display = "none";
+		document.getElementById("scoreContent").style.display = "block";
+	} else {
+		currentQuestionIndex++;
+		makeQuestion();
+	}
+}
+
+function initQuestions(jsonQuestions) {
+	questions = [];
+	answeredQuestions = [];
+	
+	for (var i=0; i<jsonQuestions.length; i++) {	
+		var correctAnswer = jsonQuestions[i].correct_answer;
+		var incorrectAnswers = jsonQuestions[i].incorrect_answers;
+		
+		var answerIndexes = [];
+		answerIndexes.push(0);
+		var answers = [];
+		answers.push(correctAnswer);
+		for (var j=0; j<incorrectAnswers.length; j++) {
+			answerIndexes.push(j+1);
+			answers.push(incorrectAnswers[j]);
+		}
+		
+		shuffle(answerIndexes);
+		
+		var correctAnswerIndex = -1;
+		var shuffledAnswers = [];
+		for (var k=0; k<answerIndexes.length; k++) {
+			shuffledAnswers.push(answers[answerIndexes[k]]);
+			if (answerIndexes[k] == 0)
+				correctAnswerIndex = k;
+		}
+		
+		var question = {text:jsonQuestions[i].question, correctAnswer:correctAnswerIndex, answers:shuffledAnswers};
+		questions.push(question);
+		
+		answeredQuestions.push(false);
+	}
+	
+	answeredQuestions = [];
+	currentQuestionIndex = 0;
+}
+
+function makeQuestion() {
+	document.getElementById("mainContent").style.display = "block";
+	document.getElementById("questionIndex").innerHTML = "Question " + (currentQuestionIndex+1) + " of " + questions.length;
+	document.getElementById("question").innerHTML = questions[currentQuestionIndex].text;
+	
+	var answers = questions[currentQuestionIndex].answers;
+	var answersHtml = '<table cellpadding="5" cellspacing="0" style="border-spacing:0px 10px">';
+	var answersOrder = ["A", "B", "C", "D"];
+	for (var i=0; i<answers.length; i++) {
+		answersHtml += '<tr><td class="answer" onclick="questionAnswered(' + i + ')"><span>' + answersOrder[i] + '. </span><span id="answer' + i + '">' + answers[i] + '</span></td></tr>';
+	}
+	answersHtml += '</table>';
+	
+	document.getElementById("answers").innerHTML = answersHtml;
+}
+
+function startGame() {
+	document.getElementById("mainContent").style.display = "none";
+	document.getElementById("scoreContent").style.display = "none";
+	document.getElementById("pleaseWaitContent").style.display = "block";
+
+	var xmlhttp = new XMLHttpRequest();
+	xmlhttp.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			myObj = JSON.parse(this.responseText);
+			document.getElementById("pleaseWaitContent").style.display = "none";
+			initQuestions(myObj.results);
+			
+			makeQuestion();
+		}
+	};
+
+	xmlhttp.open("GET", "https://opentdb.com/api.php?amount=10", true);
+	xmlhttp.send();
+}
+
+window.onload = function() {
+	startGame();
+};
+</script>
+
+<div id="content">
+	<h1>Open Trivia QUIZ</h1>
+
+	<div id="pleaseWaitContent"><img src="resources/pleasewait.gif" /></div>
+	
+	<div id="mainContent" style="display:none">
+		<div id="questionIndex"></div>
+		<p id="question"></p>
+		<div id="answers"></div>
+	</div>
+	
+	<div id="scoreContent" style="display:none">
+		<p id="score"></p>
+		<input type="button" class="startBtn" style="background-color:#4CAF50; border:none; cursor:pointer; margin:0 auto; color:white; padding:15px 32px; text-align:center; text-decoration:none; display:inline-block; font-size:16px;" value="PLAY AGAIN" onclick="startGame()">
+	</div>
+</div>
+
+</body>
+</html>
